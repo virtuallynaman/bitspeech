@@ -1,0 +1,1 @@
+ALTER TABLE "interview_messages" DROP CONSTRAINT "interview_messages_interview_id_unique";

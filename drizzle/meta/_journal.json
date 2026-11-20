@@ -22,6 +22,34 @@
       "when": 1794229776571,
       "tag": "0002_odd_rumiko_fujikawa",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794745880616,
+      "tag": "0003_blue_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794840184264,
+      "tag": "0004_mean_gertrude_yorkes",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794841958945,
+      "tag": "0005_glamorous_blindfold",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794842749608,
+      "tag": "0006_lucky_ultron",
+      "breakpoints": true
     }
   ]
 }
