@@ -2,25 +2,48 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/stat-card";
-import RecentInterviews, { type Interview } from "@/components/dashboard/recent-interviews";
+import RecentInterviews from "@/components/dashboard/recent-interviews";
+import { desc, eq } from "drizzle-orm";
+import { interviews, interview_evaluations } from "@/db/interview-schema";
 import { requireSession } from "@/lib/require-session";
+import { db } from "@/db";
 
 export default async function DashboardPage() {
   const session = await requireSession();
   const firstName = session.user.name.split(" ")[0];
 
-  // TODO: replace this sample data with a query for this user's interviews
-  const interviews: Interview[] = [
-    { id: "1", role: "Full-Stack Developer", date: "Sep 28", score: 78 },
-    { id: "2", role: "JavaScript", date: "Sep 27", score: 82 },
-    { id: "3", role: "React", date: "Sep 24", score: 60 },
-  ];
+  const userInterviews = await db
+    .select({
+      id: interviews.id,
+      interviewType: interviews.interviewType,
+      level: interviews.level,
+      role: interviews.role,
+      technologies: interviews.technologies,
+      status: interviews.status,
+      createdAt: interviews.createdAt,
+      overallScore: interview_evaluations.overallScore,
+    })
+    .from(interviews)
+    .leftJoin(
+      interview_evaluations,
+      eq(interview_evaluations.interviewId, interviews.id),
+    )
+    .where(eq(interviews.userId, session.user.id))
+    .orderBy(desc(interviews.createdAt));
 
-  const total = interviews.length;
-  const best = total > 0 ? Math.max(...interviews.map((i) => i.score)) : 0;
+  const total = userInterviews.length;
+
+  const scores = userInterviews
+    .map((interview) => interview.overallScore)
+    .filter((score): score is number => score !== null);
+
+  const best = scores.length > 0 ? Math.max(...scores) : 0;
+
   const average =
-    total > 0
-      ? Math.round(interviews.reduce((sum, i) => sum + i.score, 0) / total)
+    scores.length > 0
+      ? Math.round(
+        scores.reduce((sum, score) => sum + score, 0) / scores.length,
+      )
       : 0;
 
   return (
@@ -45,7 +68,7 @@ export default async function DashboardPage() {
         <StatCard label="Best score" value={best} />
       </div>
 
-      <RecentInterviews interviews={interviews} />
+      <RecentInterviews interviews={userInterviews} />
     </div>
   );
 }
