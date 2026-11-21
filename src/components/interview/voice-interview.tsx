@@ -5,6 +5,7 @@ import { RealtimeAgent, RealtimeSession } from "@openai/agents/realtime";
 import InterviewRoom from "./interview-room";
 import { InterviewSummaryData } from "./interview-summary";
 import { TranscriptMessage } from "./transcript";
+import { useRouter } from "next/navigation";
 
 type VoiceInterviewProps = {
   interviewId: string;
@@ -15,6 +16,7 @@ export function VoiceInterview({ interviewId, summary }: VoiceInterviewProps) {
   const sessionRef = useRef<RealtimeSession | null>(null);
   const [messages, setMessages] = useState<TranscriptMessage[]>([]);
   const [audioLevel, setAudioLevel] = useState(0);
+  const router = useRouter();
 
   type ConnectionStatus = "idle" | "connecting" | "connected";
 
@@ -83,9 +85,7 @@ export function VoiceInterview({ interviewId, summary }: VoiceInterviewProps) {
 
     for (const [sequence, item] of history.entries()) {
       if (item.type !== "message") continue;
-
       if (item.role !== "user" && item.role !== "assistant") continue;
-
       if (item.status !== "completed") continue;
 
       let content = "";
@@ -110,34 +110,62 @@ export function VoiceInterview({ interviewId, summary }: VoiceInterviewProps) {
       });
     }
 
+    session.close();
+    sessionRef.current = null;
+
+    let navigatedToResults = false;
+
     try {
-      if (transcriptMessages.length > 0) {
-        const response = await fetch(
-          `/api/interviews/${interviewId}/transcript`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ messages: transcriptMessages }),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to save transcript");
-        }
-
-        console.log("Transcript saved successfully");
+      if (transcriptMessages.length === 0) {
+        throw new Error("No transcript messages found.");
       }
+
+      const transcriptResponse = await fetch(
+        `/api/interviews/${interviewId}/transcript`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: transcriptMessages }),
+        },
+      );
+
+      const transcriptData = await transcriptResponse.json();
+
+      if (!transcriptResponse.ok) {
+        throw new Error(
+          transcriptData.error ?? "Failed to save transcript",
+        );
+      }
+
+      console.log("Transcript saved successfully");
+
+      router.replace(`/interview/${interviewId}/results`);
+      navigatedToResults = true;
+
+      const evaluationResponse = await fetch(
+        `/api/interviews/${interviewId}/evaluate`,
+        { method: "POST" },
+      );
+
+      const evaluationData = await evaluationResponse.json();
+
+      if (!evaluationResponse.ok) {
+        throw new Error(
+          evaluationData.error ?? "Evaluation failed",
+        );
+      }
+
+      console.log("Evaluation saved:", evaluationData.evaluation);
+
+      router.refresh();
     } catch (error) {
-      console.error("Transcript saving failed:", error);
-    } finally {
-      session.close();
-      sessionRef.current = null;
-      setStatus("idle");
+      console.error("Interview finalization failed:", error);
+
+      if (!navigatedToResults) {
+        setStatus("idle");
+      }
     }
   }
-
 
   return (
     <InterviewRoom
