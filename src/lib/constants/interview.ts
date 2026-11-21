@@ -27,7 +27,10 @@ export const technologyValues = [
   "Computer Science",
 ] as const;
 
+export const interviewStatusValues = ["pending", "in_progress", "completed"] as const;
+
 export type InterviewType = (typeof interviewTypeValues)[number];
 export type Level = (typeof levelValues)[number];
 export type Role = (typeof roleValues)[number];
 export type Technology = (typeof technologyValues)[number];
+export type InterviewStatus = (typeof interviewStatusValues)[number];

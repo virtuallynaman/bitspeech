@@ -2,7 +2,7 @@ import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } fr
 import { user } from "./auth-schema";
 import { sql } from "drizzle-orm";
 import {
-  type InterviewType, type Level, type Role, type Technology,
+  type InterviewType, type Level, type Role, type Technology, type InterviewStatus
 } from "@/lib/constants/interview";
 
 
@@ -19,7 +19,7 @@ export const interviews = pgTable(
     technologies: text("technologies").array().$type<Technology[]>()
       .notNull()
       .default(sql`'{}'::text[]`),
-    status: text("status").notNull().default("pending"),
+    status: text("status").$type<InterviewStatus>().notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -45,7 +45,7 @@ export const interview_messages = pgTable(
       .notNull()
       .references(() => interviews.id, { onDelete: "cascade" }),
     itemId: text("item_id").notNull(),
-    role: text("role").notNull(),
+    role: text("role").$type<"assistant" | "user">().notNull(),
     content: text("content").notNull(),
     sequence: integer("sequence").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -63,3 +63,36 @@ export const interview_messages = pgTable(
     )
   ]
 );
+
+export type EvaluationCriterion = {
+  name: string;
+  score: number;
+  feedback: string;
+};
+
+export const interview_evaluations = pgTable(
+  "interview_evaluations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    interviewId: uuid("interview_id")
+      .notNull()
+      .references(() => interviews.id, { onDelete: "cascade" }),
+    overallScore: integer("overall_score").notNull(),
+    summary: text("summary").notNull(),
+    strengths: text("strengths")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    areasToImprove: text("areas_to_improve")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    criteria: jsonb("criteria").$type<EvaluationCriterion[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [
+    uniqueIndex("interview_evaluations_interview_id_idx").on(
+      table.interviewId,
+    ),
+  ],
+)
